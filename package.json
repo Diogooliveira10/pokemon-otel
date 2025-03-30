@@ -1,0 +1,19 @@
+{
+  "name": "pokemon-otel",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Diogooliveira10/pokemon-otel.git"
+  },
+  "author": "Diogo Oliveira",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Diogooliveira10/pokemon-otel/issues"
+  },
+  "homepage": "https://github.com/Diogooliveira10/pokemon-otel#readme",
+  "description": "API developed in Node.js to collect metrics, logs, and traces for the OpenTelemetry Collector."
+}
