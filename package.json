@@ -15,5 +15,14 @@
     "url": "https://github.com/Diogooliveira10/pokemon-otel/issues"
   },
   "homepage": "https://github.com/Diogooliveira10/pokemon-otel#readme",
-  "description": "API developed in Node.js to collect metrics, logs, and traces for the OpenTelemetry Collector."
+  "description": "API developed in Node.js to collect metrics, logs, and traces for the OpenTelemetry Collector.",
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.57.0",
+    "@opentelemetry/exporter-metrics-otlp-proto": "^0.200.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.200.0",
+    "@opentelemetry/sdk-node": "^0.200.0",
+    "axios": "^1.8.4",
+    "express": "^4.21.2"
+  }
 }
