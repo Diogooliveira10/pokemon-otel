@@ -1,3 +1,5 @@
+require('./tracing') // Importa a configuração do OpenTelemetry
+
 const express = require('express')
 const axios = require('axios')
 
