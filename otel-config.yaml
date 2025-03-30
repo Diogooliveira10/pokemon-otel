@@ -1,0 +1,27 @@
+# Define que OTEL Collector vai receber dados de traves via `HTTP` e `gRPC` nas portas 4318 e 4317, respectivamente.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: "0.0.0.0:4318"
+      grpc:
+        endpoint: "0.0.0.0:4317"
+
+exporters:
+  debug: # Imprime os logs no terminal.
+    verbosity: detailed
+  otlp: # Envia os dados para outro sistema OTLP (exemplo o Grafana Tempo)
+    endpoint: "http://localhost:4317"
+    tls:
+      insecure: true
+
+service: # `service.pipelines.traces` define que os traces recebidos devem  ser enviados para os exportadores definidos.
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [debug, otlp]
+
+
+
+## Executando OTEL Collector utilizando Docker. No terminal, execute:
+# docker run --rm --name otel-collector -p 4317:4317 -p 4318:4318 ` -v "C:\Users\ResTIC16\Documents\best2bee\pokemon-otel\otel-config.yaml:/etc/otel-config.yaml" ` otel/opentelemetry-collector-contrib:latest ` --config /etc/otel-config.yaml
