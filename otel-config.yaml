@@ -25,3 +25,6 @@ service: # `service.pipelines.traces` define que os traces recebidos devem  ser 
 
 ## Executando OTEL Collector utilizando Docker. No terminal, execute:
 # docker run --rm --name otel-collector -p 4317:4317 -p 4318:4318 ` -v "C:\Users\ResTIC16\Documents\best2bee\pokemon-otel\otel-config.yaml:/etc/otel-config.yaml" ` otel/opentelemetry-collector-contrib:latest ` --config /etc/otel-config.yaml
+
+## Para rodar o grafana no Docker, execute o comando no terminal:
+# docker run -d --name grafana -p 3000:3000 grafana/grafana
