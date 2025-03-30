@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 5s  # Intervalo de coleta de métricas
+
+scrape_configs:
+  - job_name: 'otel-collector'
+    static_configs:
+      - targets: ['otel-collector:8889'] # Endpoint do OpenTelemetry Collector
+
+## Rodar o Prometheus no Docker
+# docker run -d --name prometheus -p 9090:9090 `  -v "${PWD}/prometheus.yml:/etc/prometheus/prometheus.yml" ` prom/prometheus
