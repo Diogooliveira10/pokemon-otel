@@ -9,7 +9,7 @@ const PORT = 3000
 
 // Rota inicial para testar o servidor
 app.get('/', (req, res) => {
-    logger.info("Request received", { route: "/", method: "GET" }) // Registra um log sempre que essa rota for acessada
+    logger.info('Rota / acessada') // Registra o acesso
     res.send('Server is running!')
 })
 
@@ -17,21 +17,21 @@ app.get('/', (req, res) => {
 app.get('/pokemon/:name', async (req, res) => {
     try {
         const { name } = req.params // Captura o nome do Pokémon na URL
-        logger.info("Searching for Pokémon information", { pokemon: name }) // Loga quando um Pokémon é buscado
+        logger.info(`Searching for Pokémon information: ${name}`) // Registra a requisição
 
         const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${name}`)
-
-        res.json({
+        const data = {
             name: response.data.name,
             height: response.data.height,
             weight: response.data.weight,
             types: response.data.types.map(t => t.type.name)
-        });
+        }
 
-        logger.info("Response sent successfully", { pokemon: name }) // Loga se a resposta foi enviada corretamente
+        logger.info(`Pokémon Data ${name} returned successfully`) // Log de sucesso
+        res.json(data)
 
     } catch (error) {
-        logger.error("Error searching for Pokémon", { error: error.message }) // Loga erros detalhados se houver falha
+        logger.error(`Error searching for Pokémon: ${error.message}`) // Loga erros detalhados se houver falha
         res.status(500).json({ error: 'Pokémon not found!' })
     }
 })
