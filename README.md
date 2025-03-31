@@ -1,92 +1,102 @@
 # Pokémon OTEL Monitoring
 
-Este projeto tem como objetivo coletar métricas, logs e traces da API do Pokémon utilizando **OpenTelemetry**, **Prometheus** e **Grafana**.
+Este projeto é uma API em Node.js que utiliza OpenTelemetry para coletar métricas, logs e traces. A API consome dados da PokéAPI e armazena logs estruturados no PostgreSQL, permitindo monitoramento e análise com Grafana e Loki.
 
 ## 📌 Tecnologias Utilizadas
 
 - **Node.js** - Aplicação backend
+- **Express** - Framework para API
+- **Axios** - Requisições HTTP para a PokéAPI
+- **Winston** - Gerenciamento de logs
+- **PostgreSQL** - Banco de dados para armazenamento de logs
 - **OpenTelemetry Collector** - Coletor de métricas, logs e traces
 - **Prometheus** - Banco de dados de séries temporais para armazenar métricas
 - **Grafana** - Ferramenta de visualização de métricas
 - **Docker** - Gerenciamento de containers
 
-## 🚀 Passo a Passo para Configuração
+## ⚙️ Configuração do Projeto
 
 ### 1️⃣ Clonar o Repositório
-```bash
+
+```sh
 git clone https://github.com/Diogooliveira10/pokemon-otel.git
 cd pokemon-otel
 ```
 
-### 2️⃣ Criar e Configurar os Arquivos Necessários
+### 2️⃣ Instalar Dependências
 
-#### Criar o arquivo **otel-config.yaml**
-```yaml
-receivers:
-  otlp:
-    protocols:
-      grpc:
-      http:
-
-exporters:
-  prometheus:
-    endpoint: "0.0.0.0:9090"
-
-service:
-  pipelines:
-    metrics:
-      receivers: [otlp]
-      exporters: [prometheus]
+```sh
+npm install
 ```
 
-#### Criar o arquivo **prometheus.yml**
-```yaml
-scrape_configs:
-  - job_name: 'otel-collector'
-    static_configs:
-      - targets: ['otel-collector:9090']
+### 3️⃣ Configurar Banco de Dados PostgreSQL
+
+Criar um banco de dados chamado `pokemon_logs` e a tabela de logs:
+
+```sql
+CREATE TABLE logs (
+    id SERIAL PRIMARY KEY,
+    level VARCHAR(10),
+    message TEXT,
+    timestamp TIMESTAMP DEFAULT NOW(),
+    metadata JSONB
+);
 ```
 
-### 3️⃣ Criar a Rede Docker
-```bash
-docker network create sentinel
+### 4️⃣ Criar o Arquivo `.env`
+
+Crie um arquivo `.env` com as configurações do PostgreSQL:
+
+```
+DB_USER=admin
+DB_HOST=localhost
+DB_DATABASE=pokemon_logs
+DB_PASSWORD=suasenha
+DB_PORT=5432
 ```
 
-### 4️⃣ Subir os Containers Docker
+### 5️⃣ Rodar o Servidor
 
-#### OpenTelemetry Collector
-```bash
-docker run -d --name otel-collector --network sentinel -p 4317:4317 -p 4318:4318 \
--v "$(pwd)/otel-config.yaml:/etc/otel-config.yaml" \
-otel/opentelemetry-collector-contrib:latest \
---config /etc/otel-config.yaml
+```sh
+node server.js
 ```
 
-#### Prometheus
-```bash
-docker run -d --name prometheus --network sentinel -p 9090:9090 \
--v "$(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml" \
-prom/prometheus
+Saída esperada:
+
+```
+{"level":"info","message":"Server running on port 3000","timestamp":"..."}
+OpenTelemetry started!
 ```
 
-#### Grafana
-```bash
-docker run -d --name grafana --network sentinel -p 3000:3000 grafana/grafana
+## 🔍 Testando Logs no Banco de Dados
+
+Após rodar o servidor, acesse o PostgreSQL para verificar os logs armazenados:
+
+```sh
+psql -U admin -d pokemon_logs
 ```
 
-### 5️⃣ Acessar as Ferramentas
+Dentro do psql, execute:
 
-- **OpenTelemetry**: Coletando métricas em `http://localhost:4317`
-- **Prometheus**: Consultando métricas em `http://localhost:9090`
-- **Grafana**: Dashboard de visualização em `http://localhost:3000`
+```sql
+SELECT * FROM logs;
+```
 
-### 6️⃣ Configurar o Grafana
+Saída esperada:
 
-1. Acesse `http://localhost:3000`
-2. Adicione o Prometheus como fonte de dados
-3. Crie um Dashboard para visualizar as métricas
+```
+ id | level | message                   | timestamp           | metadata 
+----+-------+---------------------------+---------------------+----------
+  1 | info  | Server running on port 3000 | 2025-03-31 19:20:23 | 
+  2 | info  | Database log test          | 2025-03-31 19:23:07 | 
+```
+
+## 🚀 Próximos Passos
+
+- Configurar Loki e Grafana para visualizar logs
+- Adicionar coletores de métricas
+- Criar dashboards personalizados
 
 ---
 
 📌 **Feito por Diogo Oliveira** | 💡 _Contribuições são bem-vindas!_
-
