@@ -1,3 +1,5 @@
+require("dotenv").config()
+
 const winston = require("winston") // Biblioteca popular para logs em Node.js, e configurar para gerar logs estruturados em JSON.
 const { Pool } = require("pg") // Importa o pool de conexões com o PostgreSQL
 // Diretório para armazenar os logs
@@ -6,11 +8,11 @@ const path = require("path") // Garante que os caminhos dos arquivos sejam compa
 
 // Configuração do banco de dados
 const pool = new Pool({ // `Pool` cria um conjunto de conexões reutilizáveis com o banco de dados
-  user: "admin",
-  host: "localhost",
-  database: "pokemon_logs",
-  password: "admin",
-  port: 5432,
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASSWORD,
+  port: process.env.DB_PORT,
 })
 
 // Garante que o diretório logs existe
