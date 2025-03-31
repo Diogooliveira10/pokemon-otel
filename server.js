@@ -3,9 +3,13 @@ require('./tracing') // Importa a configuração do OpenTelemetry
 const express = require('express')
 const axios = require('axios')
 const logger = require('./logger') // Importa o logger configurado
+const httpLogger = require('./middlewares/httpLogger') // Importa o middleware de logs HTTP
 
 const app = express()
 const PORT = 3000
+
+app.use(express.json())
+app.use(httpLogger) // Middleware que registra logs de todas as requisições HTTP
 
 // Rota inicial para testar o servidor
 app.get('/', (req, res) => {
@@ -44,5 +48,6 @@ app.use((err, req, res, next) => {
 
 // Inicia o servidor
 app.listen(PORT, () => {
-    logger.info(`Server running on port ${PORT}`) // Garantindo que a mensagem seja estruturada
+    logger.info(`Server running on port ${PORT}`) // Log de inicialização do servidor
+    console.log(`Server is running on http://localhost:${PORT}`)
 })

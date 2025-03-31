@@ -1,4 +1,4 @@
-const logger = require("./logger") // Importa o logger configurado
+const logger = require("./httpLogger") // Importa o logger configurado
 const { context, trace } = require("@opentelemetry/api")
 
 const httpLogger = (req, res, next) => {
