@@ -11,7 +11,7 @@ services:
       - prometheus
       - loki
     networks:
-      - monitoring
+      - sentinel
 
   prometheus:
     image: prom/prometheus:latest
@@ -20,7 +20,7 @@ services:
     volumes:
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
-      - monitoring
+      - sentinel
 
   loki:
     image: grafana/loki:2.9.1
@@ -30,7 +30,7 @@ services:
     volumes:
       - ./config/loki-config.yaml:/etc/loki/config.yaml
     networks:
-      - monitoring
+      - sentinel
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
@@ -44,13 +44,13 @@ services:
     depends_on:
       - prometheus
     networks:
-      - monitoring
+      - sentinel
 
 volumes:
   grafana-storage:
 
 networks:
-  monitoring:
+  sentinel:
 
 # ============================ DOCUMENTAÇÃO ============================
 #
