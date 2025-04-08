@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # Banco de dados PostgreSQL
   db:
     image: postgres:15
     environment:
@@ -14,6 +15,22 @@ services:
     networks:
       - sentinel
 
+  # Serviço da aplicação Node.js (API Pokémon)
+  api:
+    build:
+      context: .
+    container_name: pokemon-api
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - otel-collector
+    networks:
+      - sentinel
+
+  # Interface de visualização de métricas e logs
   grafana:
     image: grafana/grafana:latest
     ports:
@@ -26,6 +43,7 @@ services:
     networks:
       - sentinel
 
+  # Coleta e armazena métricas
   prometheus:
     image: prom/prometheus:latest
     ports:
@@ -35,6 +53,7 @@ services:
     networks:
       - sentinel
 
+  # Armazena logs estruturados
   loki:
     image: grafana/loki:2.9.4
     ports:
@@ -45,6 +64,7 @@ services:
     networks:
       - sentinel
 
+  # Agente intermediário para coletar traces, logs e métricas
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     command: ["--config=/etc/otel-config.yaml"]
@@ -70,10 +90,14 @@ networks:
 #
 # Este arquivo docker-compose.yml define os serviços necessários para
 # o monitoramento e rastreamento da aplicação Node.js com:
-# - Grafana: Interface de visualização de métricas e logs
-# - Prometheus: Coleta e armazena métricas
-# - Loki: Armazena logs estruturados
-# - OpenTelemetry Collector: Agente intermediário para coletar traces, logs e métricas
 #
-# As configurações específicas de cada ferramenta estão localizadas na pasta ./config
-# para manter a organização e facilitar a manutenção do projeto.
+# - db: Banco de dados PostgreSQL
+# - api: Aplicação Node.js que envia logs, métricas e traces
+# - grafana: Interface de visualização de métricas e logs
+# - prometheus: Coleta e armazena métricas
+# - loki: Armazena logs estruturados
+# - otel-collector: Agente intermediário que coleta e exporta
+#   dados observáveis para Prometheus, Grafana, etc.
+#
+# As configurações específicas de cada ferramenta estão localizadas
+# na pasta ./config para manter a organização e facilitar a manutenção.
