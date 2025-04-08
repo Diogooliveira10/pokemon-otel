@@ -1,52 +1,79 @@
+# Desabilita autenticação (uso seguro apenas em ambientes de desenvolvimento/testes)
 auth_enabled: false
 
 server:
+  # Porta para requisições HTTP (ex: API REST)
   http_listen_port: 3100
+  # Porta para comunicação via gRPC (usada entre serviços como Loki e Promtail)
   grpc_listen_port: 9095
 
 ingester:
   wal:
+    # Diretório onde o Write-Ahead Log (WAL) é salvo
     dir: /loki/wal
   lifecycler:
     ring:
       kvstore:
+        # Armazena o estado do anel de instâncias em memória (não persistente)
         store: inmemory
+      # Define o número de réplicas para os dados (1 = sem replicação)
       replication_factor: 1
+  # Tempo ocioso máximo de um chunk antes de ser finalizado
   chunk_idle_period: 5m
+  # Tempo de vida máximo de um chunk antes de ser fechado automaticamente
   max_chunk_age: 1h
+  # Tamanho-alvo de cada chunk em bytes (1 MiB)
   chunk_target_size: 1048576
+  # Tempo que um chunk finalizado é mantido em memória antes de ser descartado
   chunk_retain_period: 30s
 
 storage_config:
   tsdb_shipper:
+    # Diretório de índices ativos
     active_index_directory: /loki/index
+    # Local de cache dos índices
     cache_location: /loki/index_cache
+    # Tipo de armazenamento compartilhado (filesystem local)
     shared_store: filesystem
   filesystem:
+    # Diretório onde os chunks de logs são salvos
     directory: /loki/chunks
 
 schema_config:
   configs:
     - from: 2024-01-01
+      # Backend de armazenamento dos logs (TSDB = Time Series DB)
       store: tsdb
+      # Local dos objetos de armazenamento (filesystem local)
       object_store: filesystem
+      # Versão do schema utilizado
       schema: v12
       index:
+        # Prefixo dos arquivos de índice
         prefix: index_
+        # Frequência de criação de novos índices (a cada 24h)
         period: 24h
 
 compactor:
+  # Diretório de trabalho usado pelo compactor para agrupar arquivos de índice
   working_directory: /loki/compactor
+  # Mesmo sistema de arquivos compartilhado definido no storage
   shared_store: filesystem
 
 limits_config:
+  # Permite logs sem nome de métrica (útil para ingestão flexível)
   enforce_metric_name: false
+  # Rejeita logs com timestamp muito antigo
   reject_old_samples: true
+  # Define o limite máximo de idade para logs recebidos (168h = 7 dias)
   reject_old_samples_max_age: 168h
 
 chunk_store_config:
+  # Tempo máximo que uma consulta pode olhar para trás no tempo
   max_look_back_period: 168h
 
 table_manager:
+  # Habilita a exclusão automática de dados antigos
   retention_deletes_enabled: true
+  # Define o tempo total de retenção dos logs (168h = 7 dias)
   retention_period: 168h
