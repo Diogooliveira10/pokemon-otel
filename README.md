@@ -1,23 +1,23 @@
 # Pokémon OTEL Monitoring
 
-Este projeto é uma API em Node.js que integra *OpenTelemetry*, *PostgreSQL*, *Prometheus* e *Grafana* para fornecer *observabilidade completa* (tracing, logs e métricas) de chamadas à PokéAPI. Os logs são armazenados no banco de dados e poderão ser visualizados no Grafana via Loki.
+Este projeto é uma API em *Node.js* que integra *OpenTelemetry*, *PostgreSQL*, *Prometheus*, *Grafana* e *Loki* para fornecer *observabilidade completa* (tracing, logs e métricas) de chamadas à PokéAPI. Os logs são armazenados no banco de dados e poderão ser visualizados tudo em tempo real via dashboards Grafana.
 
 ## ✨ Visão Geral
 
 A aplicação expõe endpoints para buscar dados de Pokémon e monitora cada requisição HTTP com:
-- *Traces* exportados via OTLP para o Collector;
-- *Logs* estruturados armazenados no PostgreSQL;
-- *Métricas* exportadas para Prometheus (ex: tempo de resposta HTTP);
-- Tudo sendo visualizado com *Grafana + Loki*.
+- **Traces** exportados via OTLP para o *OpenTelemetry Collector*;
+- **Logs** estruturados armazenados no *PostgreSQL*;
+- **Métricas** exportadas para *Prometheus* (ex: tempo de resposta HTTP, latência, contadores, etc);
+- Tudo sendo visualizado com **Grafana + Loki**.
 
-## 📌 Tecnologias Utilizadas
+## 🛠️ Tecnologias Utilizadas
 
 - **Node.js + Express** – Backend da aplicação
 - **Axios** - Requisições HTTP para consumo da PokéAPI
 - **Winston** - Gerenciamento de logs
 - **PostgreSQL** - Banco de dados para armazenamento de logs
-- **OpenTelemetry SDK** - Coleta de métricas, traces e logs
-- **Prometheus Exporter** - Exposição de métricas
+- **OpenTelemetry** - Coleta de métricas, traces e logs
+- **Prometheus** - Coletor de métricas
 - **Grafana + Loki** - Dashboard para visualização de métricas e logs
 - **Docker** - Ambiente containerizado com PostgreSQL, Grafana, Loki, etc.
 
@@ -91,19 +91,25 @@ Saída esperada:
 {"level":"info","message":"Server running on port 3000", ...}
 ```
 
-## 🔍 Testar Logs no PostgreSQL
+## 🧪 Testando a Observabilidade
 
+### Traces
+1. Acesse `http://localhost:3000/pokemon/pikachu`
+2. Veja os **traces** no Grafana (via Tempo ou outro visualizador OTLP)
+
+### Logs
 Após acessar rotas da API (ex: /pokemon/pikachu), veja os logs no banco:
 
 ```sh
 psql -U admin -d pokemon_logs
 ```
 
-Dentro do psql, execute:
+Verifique os logs:
 
 ```sql
 SELECT * FROM logs;
 ```
+Ou visualize no Grafana, via Loki.
 
 ## 📊 Métricas Prometheus
 
@@ -114,6 +120,22 @@ http://localhost:9464/metrics
 ```
 
 Você poderá configurar o Prometheus para ler esse endpoint e exibir as métricas no Grafana.
+
+## 🖥️ Painéis no Grafana
+```
+http://localhost:3000
+http://localhost:9464/metrics
+http://localhost:3001 (Grafana)
+```
+Login padrão Grafana: `admin` / `admin`
+
+## 📌 Observabilidade Reunida
+
+| Tipo        | Coletado por           | Visualizado com       |
+|-------------|------------------------|-----------------------|
+| Logs        | Winston + OTEL         | Loki + Grafana        |
+| Traces      | OTEL Tracing SDK       | Tempo / Grafana       |
+| Métricas    | Prometheus Exporter    | Grafana Dashboards    |
 
 ---
 
