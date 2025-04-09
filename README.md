@@ -1,6 +1,6 @@
 # Pokémon OTEL Monitoring
 
-Este projeto é uma API em *Node.js* que integra *OpenTelemetry*, *PostgreSQL*, *Prometheus*, *Grafana* e *Loki* para fornecer *observabilidade completa* (tracing, logs e métricas) de chamadas à PokéAPI. Os logs são armazenados no banco de dados e poderão ser visualizados tudo em tempo real via dashboards Grafana.
+Este projeto é uma **API Node.js** que consome dados da PokéAPI e implementa **observabilidade completa** com **OpenTelemetry**, **PostgreSQL**, **Prometheus**, **Grafana** e **Loki**. Totalmente containerizado com Docker, ele permite monitorar **logs estruturados**, **tracing distribuído** e **métricas de performance**. Os logs são armazenados no banco de dados e poderão ser visualizados tudo em tempo real via dashboards Grafana.
 
 ## ✨ Visão Geral
 
@@ -8,13 +8,14 @@ A aplicação expõe endpoints para buscar dados de Pokémon e monitora cada req
 - **Traces** exportados via OTLP para o *OpenTelemetry Collector*;
 - **Logs** estruturados armazenados no *PostgreSQL*;
 - **Métricas** exportadas para *Prometheus* (ex: tempo de resposta HTTP, latência, contadores, etc);
-- Tudo sendo visualizado com **Grafana + Loki**.
+- Tudo sendo visualizado com **Grafana + Loki**;
+- Arquitetura containerizada via **Docker Compose**.
 
 ## 🛠️ Tecnologias Utilizadas
 
 - **Node.js + Express** – Backend da aplicação
 - **Axios** - Requisições HTTP para consumo da PokéAPI
-- **Winston** - Gerenciamento de logs
+- **Winston** - Logger estruturado com envio para PostgreSQL
 - **PostgreSQL** - Banco de dados para armazenamento de logs
 - **OpenTelemetry** - Coleta de métricas, traces e logs
 - **Prometheus** - Coletor de métricas
@@ -38,13 +39,13 @@ npm install
 
 ### 3️⃣ Configurar Banco de Dados PostgreSQL
 
-Criar um banco de dados chamado `pokemon_logs` e a tabela de logs:
+Conecte-se ao banco de dados com:
+```
+docker exec -it pokemon-otel-db-1 psql -U admin -d pokemon_logs
+```
 
+Crie a tabela de logs:
 ```sql
-CREATE DATABASE pokemon_logs;
-
-\c pokemon_logs
-
 CREATE TABLE logs (
     id SERIAL PRIMARY KEY,
     level VARCHAR(10),
@@ -63,7 +64,7 @@ Crie um arquivo `.env` com as configurações do PostgreSQL:
 ```
 PORT=3000
 
-# Banco de Dados PostgreSQL
+# Banco de Dados PostgreSQL (acessado internamente no Docker)
 DB_USER=admin
 DB_HOST=localhost
 DB_NAME=pokemon_logs
@@ -77,19 +78,18 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 OTEL_SERVICE_NAME=pokemon-api
 ```
 
-### 5️⃣ Rodar o Servidor
+### 5️⃣ Suba os serviços com Docker Compose
 
 ```sh
-node src/server.js
+docker-compose up -d --build
 ```
-
-Saída esperada:
-
-```
-✅ OpenTelemetry initialized
-✅ Prometheus scrape endpoint: http://localhost:9464/metrics
-{"level":"info","message":"Server running on port 3000", ...}
-```
+Os seguintes serviços serão iniciados:
+- PostgreSQL
+- Grafana
+- Prometheus
+- Loki
+- OTEL Collector
+- API Node.js
 
 ## 🧪 Testando a Observabilidade
 
