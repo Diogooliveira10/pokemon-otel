@@ -1,6 +1,6 @@
-# Pokémon OTEL Monitoring
+# Pokémon OTEL Monitoring API
 
-Este projeto é uma **API Node.js** que consome dados da PokéAPI e implementa **observabilidade completa** com **OpenTelemetry**, **PostgreSQL**, **Prometheus**, **Grafana** e **Loki**. Totalmente containerizado com Docker, ele permite monitorar **logs estruturados**, **tracing distribuído** e **métricas de performance**. Os logs são armazenados no banco de dados e poderão ser visualizados tudo em tempo real via dashboards Grafana.
+Este projeto é uma **API Node.js** com **Express** que consome dados da PokéAPI e implementa **observabilidade completa** com **OpenTelemetry**, **Prometheus**, **Grafana**, **Loki** e **PostgreSQL**. Totalmente containerizado com Docker, ele permite monitorar **logs estruturados**, **tracing distribuído** e **métricas de performance**. Os logs são armazenados no banco de dados e poderão ser visualizados tudo em tempo real via dashboards Grafana.
 
 ## ✨ Visão Geral
 
@@ -20,9 +20,19 @@ A aplicação expõe endpoints para buscar dados de Pokémon e monitora cada req
 - **OpenTelemetry** - Coleta de métricas, traces e logs
 - **Prometheus** - Coletor de métricas
 - **Grafana + Loki** - Dashboard para visualização de métricas e logs
-- **Docker** - Ambiente containerizado com PostgreSQL, Grafana, Loki, etc.
+- **Docker + Docker Compose** - Ambiente containerizado com PostgreSQL, Grafana, Loki, etc.
 
-## ⚙️ Configuração do Projeto
+## 🚀 Funcionalidades implementadas
+
+- ✅ Exporta **traces** com OTLP para o Collector
+- ✅ Exporta **métricas** Prometheus (ex: tempo de resposta HTTP)
+- ✅ Exporta **logs estruturados** com OTLP para o Loki
+- ✅ **Armazena logs** também no PostgreSQL (como backup local)
+- ✅ Middleware de logging HTTP
+- ✅ Requisições à PokéAPI com logs de sucesso/erro
+- ✅ Integração completa com **Grafana** para visualização dos dados
+
+## ⚙️ Como instalar e configurar o projeto
 
 ### 1️⃣ Clonar o Repositório
 
@@ -37,105 +47,43 @@ cd pokemon-otel
 npm install
 ```
 
-### 3️⃣ Configurar Banco de Dados PostgreSQL
-
-Conecte-se ao banco de dados com:
-```
-docker exec -it pokemon-otel-db-1 psql -U admin -d pokemon_logs
-```
-
-Crie a tabela de logs:
-```sql
-CREATE TABLE logs (
-    id SERIAL PRIMARY KEY,
-    level VARCHAR(10),
-    message JSONB,
-    trace_id VARCHAR(255),
-    span_id VARCHAR(255),
-    trace_flags VARCHAR(255),
-    timestamp TIMESTAMP DEFAULT NOW()
-);
-```
-
-### 4️⃣ Configurar o Arquivo `.env`
-
-Crie um arquivo `.env` com as configurações do PostgreSQL:
+### 3️⃣ Suba todos os containers:
 
 ```
-PORT=3000
-
-# Banco de Dados PostgreSQL (acessado internamente no Docker)
-DB_USER=admin
-DB_HOST=localhost
-DB_NAME=pokemon_logs
-DB_PASSWORD=admin
-DB_PORT=5432
-
-DATABASE_URL=postgresql://admin:admin@localhost:5432/pokemon_logs
-
-# OpenTelemetry
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-OTEL_SERVICE_NAME=pokemon-api
-```
-
-### 5️⃣ Suba os serviços com Docker Compose
-
-```sh
 docker-compose up -d --build
 ```
-Os seguintes serviços serão iniciados:
-- PostgreSQL
-- Grafana
-- Prometheus
-- Loki
-- OTEL Collector
-- API Node.js
 
-## 🧪 Testando a Observabilidade
+### 4️⃣ Acesse:
 
-### Traces
-1. Acesse `http://localhost:3000/pokemon/pikachu`
-2. Veja os **traces** no Grafana (via Tempo ou outro visualizador OTLP)
+- **API**: http://localhost:3000
 
-### Logs
-Após acessar rotas da API (ex: /pokemon/pikachu), veja os logs no banco:
+- **Grafana**: http://localhost:3001 (login: `admin` / senha: `admin`)
 
-```sh
-psql -U admin -d pokemon_logs
+- **Prometheus**: http://localhost:9090
+
+- **Loki** (via **Grafana**): Explore > Logs
+
+## ⚡ Como usar o projeto
+
+### Requisição para buscar um pokémon:
+```
+curl http://localhost:3000/pokemon/pikachu
 ```
 
-Verifique os logs:
-
-```sql
-SELECT * FROM logs;
+### Exemplo de retorno:
 ```
-Ou visualize no Grafana, via Loki.
-
-## 📊 Métricas Prometheus
-
-O endpoint de métricas Prometheus estará disponível em:
-
-```
-http://localhost:9464/metrics
+ {
+   "name": "pikachu",
+   "height": 4,
+   "weight": 60,
+   "types": ["electric"]
+ }
 ```
 
-Você poderá configurar o Prometheus para ler esse endpoint e exibir as métricas no Grafana.
-
-## 🖥️ Painéis no Grafana
-```
-http://localhost:3000
-http://localhost:9464/metrics
-http://localhost:3001 (Grafana)
-```
-Login padrão Grafana: `admin` / `admin`
-
-## 📌 Observabilidade Reunida
-
-| Tipo        | Coletado por           | Visualizado com       |
-|-------------|------------------------|-----------------------|
-| Logs        | Winston + OTEL         | Loki + Grafana        |
-| Traces      | OTEL Tracing SDK       | Tempo / Grafana       |
-| Métricas    | Prometheus Exporter    | Grafana Dashboards    |
+### Visualização no Grafana:
+- Use a label `{job="pokemon-api"}` para logs no Loki
+- Métricas HTTP são expostas em `http://localhost:9464/metrics`
+- Dashboards prontos podem ser importados com o ID do dashboard na comunidade Grafana
 
 ---
 
