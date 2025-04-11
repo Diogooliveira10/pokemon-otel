@@ -8,8 +8,8 @@ WORKDIR /app
 # Copia os arquivos de dependências (package.json e package-lock.json) para o diretório de trabalho do container
 COPY package*.json ./
 
-# Instala as dependências do projeto com base nos arquivos copiados
-RUN npm install
+# Instala as dependências, ignorando conflitos de peer dependencies
+RUN npm install --legacy-peer-deps
 
 # Copia todos os demais arquivos da aplicação para o diretório de trabalho no container
 COPY . .
