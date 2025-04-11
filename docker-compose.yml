@@ -5,15 +5,21 @@ services:
   db:
     image: postgres:15
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: pokemon
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: pokemon_logs
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - sentinel
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "admin"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # Serviço da aplicação Node.js (API Pokémon)
   api:
@@ -25,8 +31,10 @@ services:
     env_file:
       - .env
     depends_on:
-      - db
-      - otel-collector
+      db:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
     networks:
       - sentinel
 
