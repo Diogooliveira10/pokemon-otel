@@ -1,45 +1,55 @@
 require('dotenv').config()
 
-const { createLogger, format, transports } = require('winston')
-const { combine, timestamp, json } = format
 const { Pool } = require('pg')
+const { Resource } = require('@opentelemetry/resources')
+const { LoggerProvider, SimpleLogRecordProcessor } = require('@opentelemetry/sdk-logs')
+const { OTLPLogExporter } = require('@opentelemetry/exporter-logs-otlp-http')
+const { diag, DiagConsoleLogger, DiagLogLevel } = require('@opentelemetry/api')
+const os = require('os')
 
-// Cria uma pool de conexões com o banco PostgreSQL usando a DATABASE_URL do .env
+// Ativa diagnósticos do OpenTelemetry (para debugging)
+diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO)
+
+// Cria pool de conexões com o PostgreSQL
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 })
 
-/**
- * Logger central usando Winston.
- * - Formato: JSON com timestamp
- * - Destino: console
- */
-const logger = createLogger({
-  level: 'info',
-  format: combine(timestamp(), json()),
-  transports: [new transports.Console()],
+// Define os metadados do serviço para o OpenTelemetry
+const resource = new Resource({
+  'service.name': process.env.OTEL_SERVICE_NAME || 'pokemon-api',
+  'service.instance.id': os.hostname(),
+  'host.name': os.hostname(),
+  app: 'pokemon-api', // usado como label em Loki/Grafana
 })
 
+// Exportador de logs via OTLP HTTP
+const logExporter = new OTLPLogExporter({
+  url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://otel-collector:4318/v1/logs',
+})
+
+// Configura o LoggerProvider e adiciona o processador
+const loggerProvider = new LoggerProvider({ resource })
+loggerProvider.addLogRecordProcessor(new SimpleLogRecordProcessor(logExporter))
+
+// Obtém um logger nomeado
+const logger = loggerProvider.getLogger('pokemon-api')
+
 /**
- * Salva cada log gerado no banco de dados PostgreSQL.
- * 
- * Campos salvos:
- * - level: nível do log (info, error, etc.)
- * - message: conteúdo do log (objeto ou texto)
- * - trace_id, span_id, trace_flags: dados de trace do OpenTelemetry (se disponíveis)
- * - timestamp: data/hora do log
+ * Salva log no banco PostgreSQL (para persistência adicional)
  */
-const saveLogToDB = async (info) => {
+const saveLogToDB = async ({ body, attributes = {}, severityText, timestamp }) => {
   try {
     await pool.query(
-      'INSERT INTO logs (level, message, trace_id, span_id, trace_flags, timestamp) VALUES ($1, $2, $3, $4, $5, $6)',
+      `INSERT INTO logs (level, message, trace_id, span_id, trace_flags, timestamp)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
       [
-        info.level,
-        typeof info.message === 'object' ? info.message : { text: info.message },
-        info.trace_id || null,
-        info.span_id || null,
-        info.trace_flags || null,
-        info.timestamp ? new Date(info.timestamp) : new Date(),
+        severityText?.toLowerCase?.() || 'info',
+        typeof body === 'object' ? body : { text: body },
+        attributes['trace_id'] || null,
+        attributes['span_id'] || null,
+        attributes['trace_flags'] || null,
+        timestamp ? new Date(timestamp) : new Date(),
       ]
     )
   } catch (error) {
@@ -47,9 +57,12 @@ const saveLogToDB = async (info) => {
   }
 }
 
-// Captura todos os logs emitidos e salva no banco
-logger.on('data', (info) => {
-  saveLogToDB(info)
-})
+/**
+ * Função para emitir log via OpenTelemetry e salvar no banco
+ */
+const emitLog = (logData) => {
+  logger.emit(logData)
+  saveLogToDB(logData)
+}
 
-module.exports = logger
+module.exports = emitLog
