@@ -1,4 +1,4 @@
-const logger = require('../logger') // Importa o logger central do projeto
+const emitLog = require('../logger') // Importa a função emitLog personalizada
 
 /**
  * Middleware para logar todas as requisições HTTP.
@@ -7,27 +7,28 @@ const logger = require('../logger') // Importa o logger central do projeto
  * - Marca o tempo inicial da requisição
  * - Aguarda a resposta ser finalizada (res.on('finish'))
  * - Calcula a duração da requisição
- * - Loga método, URL, status, duração e timestamp
+ * - Emite um log estruturado com método, rota, status, tempo e timestamp
  */
 const httpLogger = (req, res, next) => {
-  // Marca o início da requisição
   const start = Date.now()
 
-  // Aguarda a resposta ser finalizada
   res.on('finish', () => {
     const duration = Date.now() - start
 
-    // Registra os detalhes da requisição como log estruturado
-    logger.info({
-      method: req.method,
-      url: req.originalUrl,
-      statusCode: res.statusCode,
-      duration,
-      timestamp: new Date().toISOString()
+    emitLog({
+      severityText: 'INFO',
+      body: `HTTP ${req.method} ${req.originalUrl} - ${res.statusCode}`,
+      attributes: {
+        'http.method': req.method,
+        'http.route': req.originalUrl,
+        'http.status_code': res.statusCode,
+        'http.duration_ms': duration
+      },
+      timestamp: new Date()
     })
   })
 
-  next() // Passa para o próximo middleware ou rota
+  next()
 }
 
 module.exports = httpLogger
