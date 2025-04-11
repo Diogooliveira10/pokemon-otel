@@ -20,6 +20,10 @@ exporters:
       # Desabilita a verificação TLS (uso comum em ambientes locais)
       insecure: true
 
+  loki:
+    # Exportador de logs configurado para enviar os logs diretamente ao Loki
+    endpoint: "http://loki:3100/loki/api/v1/push"
+
 service:
   pipelines:
     traces:
@@ -27,3 +31,8 @@ service:
       receivers: [otlp]
       # Define para onde os dados serão exportados
       exporters: [debug, otlp]
+
+    logs:
+      # Pipeline de logs: recebe por OTLP e envia para console e Loki
+      receivers: [otlp]
+      exporters: [loki, debug]  
