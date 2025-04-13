@@ -1,0 +1,45 @@
+# Desativa autenticação (útil para ambientes de desenvolvimento)
+auth_enabled: false
+
+# Configurações do servidor Tempo
+server:
+  http_listen_port: 3200         # Porta usada pelo Grafana para consultar
+  grpc_listen_port: 4319         # gRPC para receber do Otel Collector
+  log_level: info                # depurar 
+
+# Distribuidor: recebe traces OTLP (gRPC e HTTP)
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        http: {}                 # Habilita OTLP/HTTP
+        grpc: {}                 # Habilita OTLP/gRPC
+
+# Ingestor: processa e grava os traces recebidos
+ingester:
+  trace_idle_period: 10s
+  max_block_duration: 5m
+
+# Armazenamento local de traces (pode ser S3, GCS, etc.)
+storage:
+  trace:
+    backend: local
+    local:
+      path: /tmp/tempo/traces
+
+# Compactador: limpa e compacta os blocos de trace antigos
+compactor:
+  compaction:
+    block_retention: 1h
+
+# Consulta: responde a buscas feitas pelo Grafana
+querier:
+  frontend_worker:
+    frontend_address: 127.0.0.1:9095
+
+# Frontend para busca de traces e trace_id
+query_frontend:
+  search:
+    duration_slo: 1s
+  trace_by_id:
+    duration_slo: 1s
