@@ -72,6 +72,17 @@ services:
     networks:
       - sentinel
 
+  # Armazena traces distribuídos para visualização no Grafana
+  tempo:
+    image: grafana/tempo:latest
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./config/tempo.yaml:/etc/tempo.yaml
+    ports:
+      - "3200:3200"  # Porta do Tempo para consulta via Grafana
+    networks:
+      - sentinel
+
   # OpenTelemetry Collector: recebe logs/traces/métricas da API e exporta
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
@@ -103,8 +114,9 @@ networks:
 # ✔ db: Banco PostgreSQL que armazena logs emitidos pela API.
 # ✔ api: API Node.js que emite logs estruturados, traces e métricas com OpenTelemetry.
 # ✔ prometheus: Coletor de métricas (Prometheus scrape → Otel Collector).
-# ✔ grafana: Interface unificada para dashboards e logs.
 # ✔ loki: Armazena e permite consulta de logs estruturados (recebidos via Otel Collector).
+# ✔ tempo: Armazena traces distribuídos, acessíveis via Grafana
+# ✔ grafana: Interface unificada para dashboards e logs.
 # ✔ otel-collector: Agente central de coleta/exportação OTLP (logs, métricas, traces).
 #
 # A stack é ideal para monitoramento moderno de aplicações com foco em DevOps observability.
