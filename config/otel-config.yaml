@@ -14,10 +14,10 @@ exporters:
     verbosity: detailed
 
   otlp:
-    # Envia os dados OTLP para outro destino (ex: Grafana Tempo)
-    endpoint: "http://localhost:4317"
+    # Envia traces diretamente ao Tempo via OTLP gRPC
+    endpoint: "tempo:4319"
     tls:
-      # Desabilita a verificação TLS (uso comum em ambientes locais)
+      # Desativa TLS em ambiente local (sem HTTPS)
       insecure: true
 
   loki:
@@ -30,7 +30,7 @@ service:
       # Define quais receivers são usados para receber os dados de trace
       receivers: [otlp]
       # Define para onde os dados serão exportados
-      exporters: [debug, otlp]
+      exporters: [otlp, debug]
 
     logs:
       # Pipeline de logs: recebe por OTLP e envia para console e Loki
