@@ -1,15 +1,14 @@
 # Pokémon OTEL Monitoring API
 
-Este projeto é uma **API Node.js** com **Express** que consome dados da PokéAPI e implementa **observabilidade completa** com **OpenTelemetry**, **Prometheus**, **Grafana**, **Loki** e **PostgreSQL**. Totalmente containerizado com Docker, ele permite monitorar **logs estruturados**, **tracing distribuído** e **métricas de performance**. Os logs são armazenados no banco de dados e poderão ser visualizados tudo em tempo real via dashboards Grafana.
+Este projeto é uma **API Node.js** com **Express** que consome dados da PokéAPI e implementa **observabilidade completa** utilizando **OpenTelemetry**, **Prometheus**, **Grafana**, **Loki**, **Tempo** e **PostgreSQL**. A solução é totalmente containerizada com Docker Compose e permite monitorar **logs estruturados**, **traces distribuídos e métricas de performance**, exibindo os resultados em dashboards modernos no Grafana.
 
 ## ✨ Visão Geral
 
-A aplicação expõe endpoints para buscar dados de Pokémon e monitora cada requisição HTTP com:
-- **Traces** exportados via OTLP para o *OpenTelemetry Collector*;
-- **Logs** estruturados armazenados no *PostgreSQL*;
-- **Métricas** exportadas para *Prometheus* (ex: tempo de resposta HTTP, latência, contadores, etc);
-- Tudo sendo visualizado com **Grafana + Loki**;
-- Arquitetura containerizada via **Docker Compose**.
+A aplicação expõe endpoints para buscar dados de Pokémon e monitora cada requisição HTTP através de:
+- **Traces**: Exportados via OTLP para o OpenTelemetry Collector e encaminhados para o Tempo para visualização dos spans e fluxos de execução.
+- **Logs**: Estruturados e enviados via OTLP para o Loki (além de serem persistidos no PostgreSQL).
+- **Métricas**: Coletadas via Prometheus (ex.: tempo de resposta, latência, contadores) e exibidas no Grafana.
+- **Dashboards automatizados**: Provisionamento automático de datasources e dashboards no Grafana para facilitar a visualização dos dados.
 
 ## 🛠️ Tecnologias Utilizadas
 
@@ -17,20 +16,21 @@ A aplicação expõe endpoints para buscar dados de Pokémon e monitora cada req
 - **Axios** - Requisições HTTP para consumo da PokéAPI
 - **Winston** - Logger estruturado com envio para PostgreSQL
 - **PostgreSQL** - Banco de dados para armazenamento de logs
-- **OpenTelemetry** - Coleta de métricas, traces e logs
-- **Prometheus** - Coletor de métricas
+- **OpenTelemetry** - Coleta de traces, métricas e logs (usando SDK, auto-instrumentações e OTLP exporters)
+- **Prometheus** - Coleta e armazenamento de métricas
 - **Grafana + Loki** - Dashboard para visualização de métricas e logs
-- **Docker + Docker Compose** - Ambiente containerizado com PostgreSQL, Grafana, Loki, etc.
+- **Grafana Tempo** – Armazenamento e visualização de traces distribuídos
+- **Docker + Docker Compose** - Ambiente containerizado com PostgreSQL, Grafana, Loki, etc
 
 ## 🚀 Funcionalidades implementadas
 
-- ✅ Exporta **traces** com OTLP para o Collector
-- ✅ Exporta **métricas** Prometheus (ex: tempo de resposta HTTP)
-- ✅ Exporta **logs estruturados** com OTLP para o Loki
-- ✅ **Armazena logs** também no PostgreSQL (como backup local)
-- ✅ Middleware de logging HTTP
-- ✅ Requisições à PokéAPI com logs de sucesso/erro
-- ✅ Integração completa com **Grafana** para visualização dos dados
+- ✅ Exporta **traces** via OTLP (HTTP e gRPC) para o Collector, que encaminha para Tempo
+- ✅ Coleta **métricas** com Prometheus e as expõe via Endpoint scrape
+- ✅ Exporta **logs estruturados** via OTLP para o Loki e persiste logs no PostgreSQL
+- ✅ Middleware de logging HTTP para monitorar todas as requisições
+- ✅ Rotas da API com tratamento adequado de logs de sucesso, aviso e erro
+- ✅ Provisionamento automático dos datasources e dashboards do Grafana (opcional, configurável)
+- ✅ Containerização completa com Docker Compose e healthchecks
 
 ## ⚙️ Como instalar e configurar o projeto
 
@@ -44,8 +44,9 @@ cd pokemon-otel
 ### 2️⃣ Instalar Dependências
 
 ```sh
-npm install
+npm install --legacy-peer-deps
 ```
+Observação: O comando ```--legacy-peer-deps``` é usado para resolver conflitos de dependências do OpenTelemetry.
 
 ### 3️⃣ Suba todos os containers:
 
@@ -56,12 +57,10 @@ docker-compose up -d --build
 ### 4️⃣ Acesse:
 
 - **API**: http://localhost:3000
-
-- **Grafana**: http://localhost:3001 (login: `admin` / senha: `admin`)
-
+- **Grafana**: http://localhost:3001 *(login: `admin` / senha: `admin`)*
 - **Prometheus**: http://localhost:9090
-
-- **Loki** (via **Grafana**): Explore > Logs
+- **Tempo**: http://tempo:3200 *(acessível via Grafana internamente)*
+- **Loki**: Visualização (via **Grafana**): Explore > Logs
 
 ## ⚡ Como usar o projeto
 
@@ -80,10 +79,21 @@ curl http://localhost:3000/pokemon/pikachu
  }
 ```
 
-### Visualização no Grafana:
-- Use a label `{job="pokemon-api"}` para logs no Loki
-- Métricas HTTP são expostas em `http://localhost:9464/metrics`
-- Dashboards prontos podem ser importados com o ID do dashboard na comunidade Grafana
+### Verificar Traces, Logs e Métricas
+- **Traces**: No Grafana, vá em **Explore** e selecione a fonte de dados **Tempo**. Use a query:
+```
+{ service.name = "pokemon-api" }
+```
+
+- **Logs**: No Grafana, explore **Loki** com a label:
+```
+{ job="pokemon-api" }
+```
+
+- **Métricas**: Acesse http://localhost:9464/metrics e configure um painel em Grafana para Prometheus.
+
+### Provisionamento Automático no Grafana (Opcional)
+Se desejar automatizar os datasources e dashboards, veja a seção de Provisionamento no próximo tópico.
 
 ---
 
