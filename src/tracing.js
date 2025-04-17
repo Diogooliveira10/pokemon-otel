@@ -3,56 +3,94 @@
 const { NodeSDK } = require('@opentelemetry/sdk-node')
 const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node')
 const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http')
-const { OTLPLogExporter } = require('@opentelemetry/exporter-logs-otlp-http')
 const { PrometheusExporter } = require('@opentelemetry/exporter-prometheus')
 const { Resource } = require('@opentelemetry/resources')
-const { LoggerProvider, BatchLogRecordProcessor } = require('@opentelemetry/sdk-logs')
-const os = require('os')
+const { TraceIdRatioBasedSampler } = require('@opentelemetry/sdk-trace-base')
+const {
+  SEMRESATTRS_SERVICE_NAME,
+  SEMRESATTRS_SERVICE_INSTANCE_ID,
+  HOST_NAME,
+  SEMRESATTRS_SERVICE_VERSION
+} = require('@opentelemetry/semantic-conventions')
 
-// === Recurso comum para todos os dados observáveis ===
-const resource = new Resource({
-  'service.name': process.env.OTEL_SERVICE_NAME || 'pokemon-api',
-  'service.instance.id': os.hostname(),
-  'host.name': os.hostname(),
-  app: 'pokemon-api',
-})
-
-// === Exportadores ===
-// Traces → para o Collector (que repassa ao Tempo)
+// Configuração do exportador OTLP com timeout e tratamento de erros
 const traceExporter = new OTLPTraceExporter({
-  url: process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT || 'http://otel-collector:4318/v1/traces'
+  url: process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
+  timeoutMillis: 15000,
+  concurrencyLimit: 10,
+  headers: {},
+  onSuccess: (result) => {
+    console.log('Trace exported successfully:', result);
+  },
+  onError: (error) => {
+    console.error('Error exporting trace:', error);
+  }
 })
 
-// Métricas → Prometheus (scrape em :9464)
-const prometheusExporter = new PrometheusExporter({ port: 9464 }, () => {
+// Exportador Prometheus com tratamento de erros
+const prometheusExporter = new PrometheusExporter({ port: 9464 }, (err) => {
+  if (err) {
+    console.error('Erro ao iniciar exportador Prometheus:', err)
+    return
+  }
   console.log('Prometheus scrape endpoint: http://localhost:9464/metrics')
 })
 
-// Logs → Collector (que repassa ao Loki)
-const logExporter = new OTLPLogExporter({
-  url: process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT || 'http://otel-collector:4318/v1/logs'
-})
+// Recursos enriquecidos para melhor contexto
+const resource = Resource.default().merge(
+  new Resource({
+    [SEMRESATTRS_SERVICE_NAME]: process.env.OTEL_SERVICE_NAME || 'pokemon-api',
+    [SEMRESATTRS_SERVICE_INSTANCE_ID]: require('os').hostname(),
+    [HOST_NAME]: require('os').hostname(),
+    [SEMRESATTRS_SERVICE_VERSION]: process.env.npm_package_version || '1.0.0',
+    app: 'pokemon-api',
+    environment: process.env.NODE_ENV || 'development',
+    deployment: process.env.DEPLOYMENT_ENV || 'local'
+  })
+)
 
-// Logger Provider manual (fora do NodeSDK) 
-const loggerProvider = new LoggerProvider({ resource })
-loggerProvider.addLogRecordProcessor(new BatchLogRecordProcessor(logExporter))
-
-// SDK completo com Traces, Métricas e AutoInstrumentação
+// Configuração do SDK com sampling e tratamento de erros
 const sdk = new NodeSDK({
   resource,
   traceExporter,
   metricReader: prometheusExporter,
-  instrumentations: [getNodeAutoInstrumentations()],
-  loggerProvider,
+  instrumentations: [
+    getNodeAutoInstrumentations({
+      '@opentelemetry/instrumentation-fs': { enabled: false },
+      '@opentelemetry/instrumentation-dns': { enabled: false },
+      '@opentelemetry/instrumentation-express': { enabled: true },
+      '@opentelemetry/instrumentation-http': { enabled: true }
+    })
+  ],
+  sampler: new TraceIdRatioBasedSampler(1.0)
 })
 
-sdk.start()
-console.log('OpenTelemetry initialized')
+// Inicialização com tratamento de erros
+async function initializeTracing() {
+  try {
+    await sdk.start()
+    console.log('OpenTelemetry inicializado com sucesso')
+  } catch (error) {
+    console.error('Erro ao inicializar OpenTelemetry:', error)
+    process.exit(1)
+  }
+}
 
-// Encerra o SDK com segurança ao finalizar
-process.on('SIGTERM', () => {
-  sdk.shutdown()
-    .then(() => console.log('SDK shut down successfully'))
-    .catch((err) => console.error('Error shutting down SDK', err))
-    .finally(() => process.exit(0))
-})
+// Shutdown seguro
+async function shutdownTracing() {
+  try {
+    await sdk.shutdown()
+    console.log('SDK do OpenTelemetry encerrado com sucesso')
+  } catch (error) {
+    console.error('Erro ao encerrar SDK do OpenTelemetry:', error)
+  } finally {
+    process.exit(0)
+  }
+}
+
+// Inicializa o tracing
+initializeTracing()
+
+// Tratamento de sinais de encerramento
+process.on('SIGTERM', shutdownTracing)
+process.on('SIGINT', shutdownTracing)
