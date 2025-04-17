@@ -1,45 +1,28 @@
-# Desativa autenticação (útil para ambientes de desenvolvimento)
-auth_enabled: false
-
-# Configurações do servidor Tempo
 server:
-  http_listen_port: 3200         # Porta usada pelo Grafana para consultar
-  grpc_listen_port: 4319         # gRPC para receber do Otel Collector
-  log_level: info                # depurar 
+  http_listen_port: 3200  # Porta onde o Tempo expõe sua interface HTTP (usada pelo Grafana)
 
-# Distribuidor: recebe traces OTLP (gRPC e HTTP)
 distributor:
   receivers:
     otlp:
       protocols:
-        http: {}                 # Habilita OTLP/HTTP
-        grpc: {}                 # Habilita OTLP/gRPC
+        # Endpoint para receber spans via protocolo OTLP/HTTP
+        http:
+          endpoint: "0.0.0.0:3201"  # Porta usada pelo OpenTelemetry Collector para enviar spans via HTTP
 
-# Ingestor: processa e grava os traces recebidos
-ingester:
-  trace_idle_period: 10s
-  max_block_duration: 5m
+        # Endpoint para receber spans via protocolo OTLP/gRPC
+        grpc:
+          endpoint: "0.0.0.0:3202"  # Alternativa para envio de spans via gRPC (não usada neste projeto)
 
-# Armazenamento local de traces (pode ser S3, GCS, etc.)
 storage:
   trace:
-    backend: local
+    backend: local  # Armazenamento local (padrão para desenvolvimento/testes)
     local:
-      path: /tmp/tempo/traces
+      path: /tmp/tempo/blocks  # Diretório onde os blocos de trace serão salvos no container
 
-# Compactador: limpa e compacta os blocos de trace antigos
-compactor:
-  compaction:
-    block_retention: 1h
-
-# Consulta: responde a buscas feitas pelo Grafana
-querier:
-  frontend_worker:
-    frontend_address: 127.0.0.1:9095
-
-# Frontend para busca de traces e trace_id
 query_frontend:
   search:
-    duration_slo: 1s
-  trace_by_id:
-    duration_slo: 1s
+    duration_slo: 5s  # Tempo máximo esperado (SLO) para respostas de buscas de traces
+
+compactor:
+  compaction:
+    block_retention: 48h  # Tempo de retenção dos blocos de trace (após isso são removidos)
