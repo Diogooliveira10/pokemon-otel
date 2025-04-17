@@ -9,101 +9,117 @@ services:
       POSTGRES_PASSWORD: admin                 # Senha do usuário
       POSTGRES_DB: pokemon_logs                # Nome do banco criado automaticamente
     ports:
-      - "5432:5432"                            # Mapeia a porta do host para o container
+      - "5432:5432"                            # Porta local → porta do container
     volumes:
-      - pgdata:/var/lib/postgresql/data        # Volume persistente para os dados
-      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql  # Script de inicialização para criar a tabela 'logs'
+      - pgdata:/var/lib/postgresql/data        # Volume para persistir os dados
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql  # Script que cria a tabela de logs
     networks:
       - sentinel
-    healthcheck:                               # Healthcheck para garantir que o DB está pronto antes da API subir
+    healthcheck:                               # Verifica se o banco está pronto
       test: ["CMD", "pg_isready", "-U", "admin"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # Aplicação principal (API Pokémon com observabilidade via OpenTelemetry)
+  # API Pokémon instrumentada com OpenTelemetry
   api:
     build:
-      context: .                               # Usa o Dockerfile da raiz do projeto
+      context: .                               # Diretório da API (onde está o Dockerfile)
     container_name: pokemon-api
     ports:
-      - "3000:3000"                            # Porta da API
+      - "3000:3000"                            # Exposição da API na porta 3000
     env_file:
-      - .env                                   # Arquivo com variáveis de ambiente
-    depends_on:                                # Espera o banco e o collector estarem prontos
+      - .env                                   # Variáveis de ambiente (conexão com DB, etc.)
+    depends_on:
       db:
-        condition: service_healthy
+        condition: service_healthy             # Aguarda DB estar pronto
       otel-collector:
-        condition: service_started
+        condition: service_started             # Aguarda Otel Collector estar disponível
     networks:
       - sentinel
 
-  # Interface gráfica para observabilidade (Dashboards, Logs e Métricas)
+  # Interface gráfica unificada (logs, métricas e traces)
   grafana:
     image: grafana/grafana:latest
     ports:
-      - "3001:3000"                            # Porta 3001 no host → 3000 no container
+      - "3001:3000"                            # Grafana acessível via http://localhost:3001
     volumes:
-      - grafana-storage:/var/lib/grafana       # Persistência de dashboards/configs
+      - grafana-storage:/var/lib/grafana       # Persistência dos dashboards e configurações
     depends_on:
       - prometheus
       - loki
     networks:
       - sentinel
 
-  # Coleta e armazena métricas
+  # Prometheus coleta métricas do Otel Collector
   prometheus:
     image: prom/prometheus:latest
     ports:
-      - "9090:9090"                            # Interface do Prometheus
+      - "9090:9090"                            # Acesso via http://localhost:9090
     volumes:
-      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml  # Config customizada
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml  # Configura os jobs de scrape
     networks:
       - sentinel
 
-  # Armazena logs estruturados enviados pelo OpenTelemetry Collector
+  # Loki recebe e armazena logs enviados via Otel Collector
   loki:
     image: grafana/loki:2.9.4
     ports:
-      - "3100:3100"                            # API do Loki
+      - "3100:3100"                            # Endpoint da API do Loki
     command: -config.file=/etc/loki/config.yaml
     volumes:
-      - ./config/loki-config.yaml:/etc/loki/config.yaml
+      - ./config/loki-config.yaml:/etc/loki/config.yaml  # Configuração do Loki
     networks:
       - sentinel
 
-  # Armazena traces distribuídos para visualização no Grafana
+  # Tempo armazena e serve os traces distribuídos
   tempo:
     image: grafana/tempo:latest
-    command: ["-config.file=/etc/tempo.yaml"]
+    user: "root"                               # Para evitar problemas de permissão ao gravar no volume
+    command: ["-config.file=/etc/tempo.yaml", "-log.level=debug"]  # Config customizada com debug ativado
     volumes:
       - ./config/tempo.yaml:/etc/tempo.yaml
+      - tempo-data:/tmp/tempo                  # Volume onde os blocos de trace são salvos
     ports:
-      - "3200:3200"  # Porta do Tempo para consulta via Grafana
+      - "3200:3200"  # Porta de leitura de traces para Grafana
+      - "3201:3201"  # Porta de ingestão OTLP HTTP
+      - "3202:3202"  # Porta de ingestão OTLP gRPC
     networks:
       - sentinel
+    healthcheck:                               # Verifica se a API HTTP de Tempo está pronta
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3200/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  # OpenTelemetry Collector: recebe logs/traces/métricas da API e exporta
+  # OpenTelemetry Collector: gateway centralizado para traces, logs e métricas
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
-    command: ["--config=/etc/otel-config.yaml"]             # Aponta para o arquivo de configuração customizado
+    command: ["--config=/etc/otel-config.yaml"] # Usa o arquivo customizado
     volumes:
-      - ./config/otel-config.yaml:/etc/otel-config.yaml     # Mapeamento da config do collector
+      - ./config/otel-config.yaml:/etc/otel-config.yaml
     ports:
-      - "4317:4317"  # OTLP gRPC (traces/logs)
-      - "4318:4318"  # OTLP HTTP (traces/logs)
-      - "9464:9464"  # Endpoint scrape de métricas para Prometheus
+      - "4317:4317"  # OTLP gRPC (para traces/logs)
+      - "4318:4318"  # OTLP HTTP (para traces/logs)
+      - "9464:9464"  # Endpoint Prometheus scrape (métricas)
     depends_on:
       - prometheus
+      - tempo
     networks:
       - sentinel
+    healthcheck:                               # Verifica se está aceitando conexões
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:13133/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
-# Volumes persistentes usados por PostgreSQL e Grafana
+# Volumes persistentes para manter os dados mesmo após reinicialização dos containers
 volumes:
   grafana-storage:
   pgdata:
+  tempo-data:
 
-# Rede interna para conectar todos os serviços
+# Rede interna compartilhada entre todos os serviços
 networks:
   sentinel:
 
@@ -115,8 +131,8 @@ networks:
 # ✔ api: API Node.js que emite logs estruturados, traces e métricas com OpenTelemetry.
 # ✔ prometheus: Coletor de métricas (Prometheus scrape → Otel Collector).
 # ✔ loki: Armazena e permite consulta de logs estruturados (recebidos via Otel Collector).
-# ✔ tempo: Armazena traces distribuídos, acessíveis via Grafana
-# ✔ grafana: Interface unificada para dashboards e logs.
+# ✔ tempo: Armazena traces distribuídos, acessíveis via Grafana.
+# ✔ grafana: Interface unificada para dashboards, traces e logs.
 # ✔ otel-collector: Agente central de coleta/exportação OTLP (logs, métricas, traces).
 #
-# A stack é ideal para monitoramento moderno de aplicações com foco em DevOps observability.
+# A stack é ideal para observabilidade moderna de aplicações com foco em DevOps.
