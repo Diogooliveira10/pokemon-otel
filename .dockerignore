@@ -1,0 +1,61 @@
+# Dependências
+node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Ambiente
+.env
+.env.*
+!.env.example
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.docker
+
+# Logs
+logs
+*.log
+
+# Arquivos temporários
+tmp
+temp
+
+# Arquivos de IDE/Editor
+.idea
+.vscode
+*.swp
+*.swo
+.editorconfig
+
+# Arquivos de teste
+coverage
+.nyc_output
+test
+
+# Arquivos de build
+dist
+build
+*.tsbuildinfo
+
+# Documentação
+docs
+README.md
+CHANGELOG.md
+LICENSE
+
+# Outros
+.npmrc
+.yarnrc
+.prettierrc
+.eslintrc
+.eslintignore
