@@ -1,38 +1,45 @@
 receivers:
   otlp:
     protocols:
-      # Coleta dados de trace via protocolo HTTP na porta 4318
+      # Ativa o recebimento de dados via OTLP HTTP na porta 4318
+      # (utilizado para receber logs e traces da aplicação instrumentada)
       http:
-        endpoint: "0.0.0.0:4318"
-      # Coleta dados de trace via protocolo gRPC na porta 4317
-      grpc:
-        endpoint: "0.0.0.0:4317"
+        endpoint: "0.0.0.0:4318"  # Escuta em todas as interfaces da máquina
+
+processors:
+  batch:
+    # Agrupa os dados antes de exportar para melhorar desempenho e reduzir latência
+    timeout: 1s                # Tempo máximo para agrupar os dados antes de enviar
+    send_batch_size: 1000      # Número máximo de itens por lote de envio
 
 exporters:
-  debug:
-    # Exporta os dados no console para fins de debug com nível detalhado
-    verbosity: detailed
-
-  otlp:
-    # Envia traces diretamente ao Tempo via OTLP gRPC
-    endpoint: "tempo:4319"
+  otlphttp:
+    # Exportador de traces via OTLP HTTP
+    endpoint: "http://tempo:3201"  # URL do Tempo (observabilidade de traces)
     tls:
-      # Desativa TLS em ambiente local (sem HTTPS)
-      insecure: true
+      insecure: true  # Permite conexões sem TLS (útil para ambientes locais/dev)
+
+  debug:
+    # Exporta logs e traces no console para depuração
+    verbosity: detailed  # Mostra todos os campos disponíveis dos dados
 
   loki:
-    # Exportador de logs configurado para enviar os logs diretamente ao Loki
-    endpoint: "http://loki:3100/loki/api/v1/push"
+    # Exportador de logs para o Loki (observabilidade de logs)
+    endpoint: "http://loki:3100/loki/api/v1/push"  # Endpoint do Loki local
 
 service:
   pipelines:
     traces:
-      # Define quais receivers são usados para receber os dados de trace
-      receivers: [otlp]
-      # Define para onde os dados serão exportados
-      exporters: [otlp, debug]
+      # Pipeline de coleta e exportação de traces
+      receivers: [otlp]       # Coleta via OTLP HTTP
+      processors: [batch]     # Processa os dados em lote
+      exporters: [otlphttp, debug]  # Envia para Tempo e também mostra no console
 
     logs:
-      # Pipeline de logs: recebe por OTLP e envia para console e Loki
-      receivers: [otlp]
-      exporters: [loki, debug]  
+      # Pipeline de coleta e exportação de logs
+      receivers: [otlp]       # Coleta logs via OTLP HTTP
+      exporters: [loki, debug]  # Envia para o Loki e também exibe no console
+
+  telemetry:
+    logs:
+      level: debug  # Nível de log interno do Collector (útil para diagnóstico)
